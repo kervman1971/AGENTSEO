@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent SEO Analyzer — Will AI shopping agents find your products?</title>
+<meta name="description" content="Paste a product URL. We read the page the way an AI shopping agent does, then give you the prioritized fixes most likely to get your products recommended.">
+<style>
+  :root{
+    --bg:#f6efdc; --card:#fffdf6; --ink:#1b1a17; --muted:#6f675a;
+    --line:#e7dcc2; --black:#141414; --critical:#b3261e; --warn:#9a6b12; --good:#1e7e34;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto;padding:0 20px}
+  header.hero{padding:56px 0 8px;text-align:center}
+  .badge{display:inline-flex;align-items:center;gap:8px;background:var(--card);
+    border:1px solid var(--line);border-radius:999px;padding:8px 16px;
+    font-size:13px;color:var(--muted);margin-bottom:28px}
+  .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--good);display:inline-block}
+  h1{font-size:clamp(34px,7vw,52px);line-height:1.08;margin:0 0 18px;letter-spacing:-0.02em}
+  .sub{font-size:17px;line-height:1.55;color:var(--muted);margin:0 0 30px}
+  .urlrow{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
+  @media(min-width:560px){.urlrow{flex-direction:row}}
+  input#urlInput{flex:1;font-size:16px;padding:16px 18px;border:1px solid var(--line);
+    border-radius:14px;background:#fff;color:var(--ink);outline:none}
+  input#urlInput:focus{border-color:var(--ink)}
+  button#analyzeBtn{font-size:17px;font-weight:600;padding:16px 28px;border:0;border-radius:14px;
+    background:var(--black);color:#fff;cursor:pointer;white-space:nowrap}
+  button#analyzeBtn:disabled{opacity:.55;cursor:wait}
+  .demoline{margin:6px 0 8px;font-size:14px;color:var(--muted)}
+  button.linklike{background:none;border:0;color:var(--ink);font-size:14px;cursor:pointer;
+    text-decoration:underline;text-underline-offset:3px;padding:0}
+  .fine{font-size:13px;color:var(--muted);margin:14px 0 0}
+  .error{background:#fdecea;border:1px solid #f5c6c0;color:#7a1f18;border-radius:12px;
+    padding:14px 16px;font-size:14px;line-height:1.5;margin:18px 0 0;text-align:left}
+  .loading{margin:26px 0 0;font-size:15px;color:var(--muted)}
+  .spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--ink);
+    border-radius:50%;margin:0 auto 12px;animation:spin 0.9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hidden{display:none !important}
+  main{padding:10px 0 60px}
+  .scorecard{background:var(--card);border:1px solid var(--line);border-radius:20px;
+    padding:28px 24px;display:flex;gap:22px;align-items:center;margin:26px 0;flex-wrap:wrap}
+  .ring{position:relative;width:120px;height:120px;flex:0 0 auto}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:30px;font-weight:700}
+  .scoremeta h2{margin:0 0 6px;font-size:22px}
+  .scoremeta p{margin:0;font-size:14px;color:var(--muted);line-height:1.5}
+  .scoremeta .url{word-break:break-all}
+  h3.section{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+    margin:34px 0 14px}
+  .play{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:18px;margin-bottom:12px}
+  .play .top{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+  .play .n{flex:0 0 auto;width:28px;height:28px;border-radius:50%;background:var(--ink);
+    color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .play h4{margin:2px 0 0;font-size:16px}
+  .sev{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    padding:3px 9px;border-radius:999px;margin-left:auto;flex:0 0 auto}
+  .sev.critical{background:#fdecea;color:var(--critical)}
+  .sev.warning{background:#fdf3dd;color:var(--warn)}
+  .play p{margin:8px 0;font-size:14px;line-height:1.55;color:var(--muted)}
+  .play .fix{background:#f4efe0;border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.55}
+  .play .fix strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+    margin-bottom:4px;color:var(--ink)}
+  .passes{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:6px 18px;margin-bottom:12px}
+  .passes details{padding:10px 0;border-top:1px solid var(--line)}
+  .passes details:first-child{border-top:0}
+  .passes summary{cursor:pointer;font-size:14px;font-weight:600;list-style:none}
+  .passes summary::-webkit-details-marker{display:none}
+  .passes summary::before{content:"✓ ";color:var(--good);font-weight:700}
+  .passes p{font-size:13px;color:var(--muted);line-height:1.5;margin:8px 0 4px}
+  footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 40px;
+    font-size:12.5px;color:var(--muted);line-height:1.6}
+  .again{text-align:center;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="badge"><span class="dot"></span>Agent SEO · Beta — built for Québec merchants</div>
+    <h1>Paste your product URL.<br>We'll tell you exactly what to fix.</h1>
+    <p class="sub">We read your product page the way an AI shopping agent does — titles, structured data, prices, reviews, images — then hand you the prioritized fixes most likely to get your products recommended.</p>
+    <div class="urlrow">
+      <input id="urlInput" type="url" inputmode="url" placeholder="yourshop.com/products/blue-widget" autocomplete="off">
+      <button id="analyzeBtn">Analyze →</button>
+    </div>
+    <div class="demoline">No product handy? <button class="linklike" id="demoBtn">Run a demo audit</button></div>
+    <p class="fine">$0 today · No signup · Nothing is stored</p>
+    <div id="error" class="error hidden"></div>
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <div id="loadingText">Reading your page the way an agent would…</div>
+    </div>
+  </header>
+
+  <main id="results" class="hidden">
+    <div class="scorecard">
+      <div class="ring">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#e7dcc2" stroke-width="11"/>
+          <circle id="ringFg" cx="60" cy="60" r="52" fill="none" stroke="#1e7e34" stroke-width="11"
+                  stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+        </svg>
+        <div class="num" id="scoreNum">0</div>
+      </div>
+      <div class="scoremeta">
+        <h2 id="gradeTitle">—</h2>
+        <p id="gradeSub">—</p>
+        <p class="url" id="auditedUrl"></p>
+      </div>
+    </div>
+
+    <h3 class="section">Your prioritized plays</h3>
+    <div id="plays"></div>
+
+    <h3 class="section">Already solid</h3>
+    <div class="passes" id="passes"></div>
+
+    <div class="again">
+      <button class="linklike" id="againBtn">← Audit another product</button>
+    </div>
+  </main>
+
+  <footer>
+    Prototype note: this tool fetches your page through a public relay and reads its public HTML —
+    the same public signals AI shopping agents use. Many sites run bot protection (e.g. Cloudflare)
+    that blocks automated reads — when that happens we say so instead of faking a score.
+    Try the demo audit to see how it works. Scores are guidance, not a guarantee of ranking.
+    Built as a demo for the Agent SEO concept.
+  </footer>
+
+</div>
+<script>
+/* ---------- fetch (via public CORS relays; page HTML only) ---------- */
+function normalizeUrl(raw){
+  var u = (raw || "").trim();
+  if(!u) return "";
+  if(!/^https?:\/\//i.test(u)) u = "https://" + u;
+  return u;
+}
+var RELAYS = [
+  function(u){ return "https://api.allorigins.win/raw?url=" + encodeURIComponent(u); },
+  function(u){ return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u); }
+];
+function fetchPage(url){
+  var i = 0;
+  function attempt(){
+    if(i >= RELAYS.length) return Promise.reject(new Error("fetch-failed"));
+    var relay = RELAYS[i++]();
+    return fetch(relay).then(function(res){
+      if(!res.ok) throw new Error("bad-status");
+      return res.text();
+    }).then(function(html){
+      if(!html || html.length < 500) throw new Error("empty");
+      return html;
+    }).catch(function(){ return attempt(); });
+  }
+  return attempt();
+}
+
+/* ---------- parse helpers ---------- */
+function collectJsonLdProducts(doc){
+  var products = [];
+  function walk(node){
+    if(!node) return;
+    if(Array.isArray(node)){ node.forEach(walk); return; }
+    if(typeof node !== "object") return;
+    var t = node["@type"];
+    var types = Array.isArray(t) ? t : [t];
+    if(types.indexOf("Product") !== -1){ products.push(node); return; }
+    if(node["@graph"]) walk(node["@graph"]);
+    if(node.mainEntity) walk(node.mainEntity);
+    if(node.itemListElement) walk(node.itemListElement);
+  }
+  var scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+  for(var i=0;i<scripts.length;i++){
+    try { walk(JSON.parse(scripts[i].textContent)); } catch(e){}
+  }
+  return products;
+}
+function firstOffer(product){
+  var o = product.offers;
+  if(!o) return null;
+  if(Array.isArray(o)) return o[0] || null;
+  return o;
+}
+function metaContent(doc, selector){
+  var el = doc.querySelector(selector);
+  return el ? (el.getAttribute("content") || "").trim() : "";
+}
+function bodyText(doc){
+  return (doc.body ? doc.body.textContent : "").replace(/\s+/g, " ");
+}
+
+/* ---------- the audit ---------- */
+function runAudit(doc, url){
+  var plays = [], passes = [], score = 100;
+  function fail(title, detail, fix, pts){
+    score -= pts;
+    plays.push({sev:"critical", title:title, detail:detail, fix:fix, pts:pts});
+  }
+  function warn(title, detail, fix, pts){
+    score -= pts;
+    plays.push({sev:"warning", title:title, detail:detail, fix:fix, pts:pts});
+  }
+  function ok(title, detail){
+    passes.push({title:title, detail:detail});
+  }
+
+  /* 1 — Product structured data (the big one agents read) */
+  var products = collectJsonLdProducts(doc);
+  var product = products[0] || null;
+  if(!product){
+    fail(
+      "No Product structured data found",
+      "AI shopping agents read schema.org markup before they read your prose. Without a JSON-LD Product block, an agent has to guess at your price, availability and details — and guessing agents skip you.",
+      "Add a <script type=\"application/ld+json\"> block with @type Product containing at least: name, image, description, brand, sku, and an offers object with price, priceCurrency and availability.",
+      25
+    );
+  } else {
+    ok("Product structured data found",
+       "Found " + products.length + " JSON-LD Product block" + (products.length>1?"s":"") + " — agents can parse this page reliably.");
+  }
+
+  var offer = product ? firstOffer(product) : null;
+
+  /* 2 — price in structured data */
+  if(product){
+    var price = offer && (offer.price || offer.priceSpecification);
+    if(price){
+      var cur = (offer.priceCurrency || "").toUpperCase();
+      ok("Price in structured data",
+         "Agents see a machine-readable price" + (cur ? " (" + cur + ")" : "") + ".");
+      if(!cur){
+        warn("Price has no currency",
+             "A price without a currency code forces agents to guess — wrong guesses mean wrong conversions and lost sales.",
+             "Add \"priceCurrency\": \"CAD\" (or your currency) inside the offers object.", 5);
+      }
+    } else {
+      fail("No price in structured data",
+           "The single most-filtered attribute in agent shopping is price. If it isn't machine-readable, you can't appear in 'under $50' style queries.",
+           "Add \"price\" and \"priceCurrency\" to the offers object in your Product markup.", 10);
+    }
+    /* 3 — availability */
+    var avail = offer && offer.availability ? String(offer.availability) : "";
+    if(/InStock|OutOfStock|PreOrder|LimitedAvailability/i.test(avail)){
+      ok("Availability in structured data", "Agents know whether to recommend you right now.");
+    } else {
+      warn("No availability in structured data",
+           "Agents deprioritize products they can't confirm are buyable — nobody wants to recommend an out-of-stock item.",
+           "Add \"availability\": \"https://schema.org/InStock\" (or OutOfStock) to the offers object.", 8);
+    }
+    /* 4 — image in structured data */
+    var img = product.image;
+    var hasImg = !!img && (typeof img === "string" ? img.length > 0 : true);
+    if(hasImg){ ok("Image in structured data", "Agents can show your product visually."); }
+    else {
+      warn("No image in structured data",
+           "Products with images get picked far more often — agents and the humans they serve both skip imageless listings.",
+           "Add an absolute \"image\" URL (1200px+ on the long edge) to the Product markup.", 8);
+    }
+    /* 5 — brand */
+    var brand = product.brand;
+    var brandName = typeof brand === "string" ? brand : (brand && brand.name);
+    if(brandName){ ok("Brand in structured data", "Brand: " + brandName + "."); }
+    else {
+      warn("No brand in structured data",
+           "'Show me Nike running shoes' style queries filter on brand first.",
+           "Add \"brand\": {\"@type\": \"Brand\", \"name\": \"Your Brand\"}.", 4);
+    }
+    /* 6 — sku / gtin */
+    if(product.sku || product.gtin || product.gtin13 || product.mpn){
+      ok("Product identifier present", "SKU/GTIN helps agents match your product across stores.");
+    } else {
+      warn("No SKU or GTIN in structured data",
+           "Unique identifiers let agents match your exact product when a shopper asks for it by model.",
+           "Add your \"sku\" (and \"gtin13\" if you have a barcode).", 4);
+    }
+    /* 7 — reviews */
+    var agg = product.aggregateRating;
+    if(agg && (agg.ratingValue || agg.reviewCount)){
+      ok("Review markup found",
+         (agg.reviewCount || "?") + " reviews, rated " + (agg.ratingValue || "?") + " — social proof agents can quote.");
+    } else {
+      warn("No review markup",
+           "Star ratings are one of the strongest ranking signals for agent recommendations.",
+           "Add aggregateRating with ratingValue and reviewCount once you have reviews; encourage buyers to leave them.", 6);
+    }
+  }
+
+  /* 8 — Open Graph tags */
+  var ogTitle = metaContent(doc, 'meta[property="og:title"]');
+  var ogImage = metaContent(doc, 'meta[property="og:image"]');
+  if(ogTitle && ogImage){
+    ok("Social preview tags complete", "og:title and og:image are set — your product renders properly when shared.");
+  } else {
+    var missing = [];
+    if(!ogTitle) missing.push("og:title");
+    if(!ogImage) missing.push("og:image");
+    warn("Incomplete social preview tags (" + missing.join(", ") + ")",
+         "Agents and chat apps use Open Graph tags for the card they show humans. Missing tags mean a broken or blank preview.",
+         "Add " + missing.join(" and ") + " to the page <head>.", 5);
+  }
+
+  /* 9 — title tag */
+  var title = (doc.title || "").trim();
+  if(!title){
+    fail("Page has no <title>",
+         "The title is the first thing both search engines and agents read. A missing one is a blank first impression.",
+         "Set a descriptive <title>: product name + key attribute + brand (aim for 30–60 characters).", 5);
+  } else if(title.length < 30){
+    warn("Title tag is very short (" + title.length + " chars)",
+         "Short titles give agents little to match against. \"" + title + "\" doesn't say much.",
+         "Expand it: product name + 1–2 key attributes (size, colour, material) + brand.", 4);
+    ok("Title tag present", "\u201c" + title + "\u201d");
+  } else if(title.length > 70){
+    warn("Title tag is very long (" + title.length + " chars)",
+         "Long titles get truncated in agent responses and shopping cards.",
+         "Trim to ~60 characters: product name + top attribute + brand.", 3);
+    ok("Title tag present", "\u201c" + title.slice(0,60) + "…\u201d");
+  } else {
+    ok("Title tag looks good", "\u201c" + title + "\u201d (" + title.length + " chars).");
+  }
+
+  /* 10 — meta description */
+  var md = metaContent(doc, 'meta[name="description"]');
+  if(md){ ok("Meta description present", md.length + " characters — agents use this as your product summary."); }
+  else {
+    warn("No meta description",
+         "Without one, agents (and Google) invent your summary from random page text.",
+         "Write 120–155 characters: what it is, who it's for, one key benefit.", 4);
+  }
+
+  /* 11 — H1 */
+  var h1 = doc.querySelector("h1");
+  var h1t = h1 ? h1.textContent.trim().replace(/\s+/g," ").slice(0,80) : "";
+  if(h1t){ ok("Clear H1 heading", "\u201c" + h1t + "\u201d."); }
+  else {
+    warn("No H1 heading found",
+         "Agents weight the H1 heavily when deciding what a page is about.",
+         "Add one H1 with the product name.", 4);
+  }
+
+  /* 12 — image alt text */
+  var imgs = Array.prototype.slice.call(doc.querySelectorAll("img"))
+    .filter(function(im){ return im.getAttribute("src"); });
+  if(imgs.length === 0){
+    warn("No product images found in the HTML",
+         "No <img> tags detected — agents can't show what they can't see.",
+         "Add product photos; Shopify/WooCommerce themes do this automatically — check your theme.", 6);
+  } else {
+    var withAlt = imgs.filter(function(im){
+      var a = im.getAttribute("alt"); return a && a.trim().length > 2;
+    }).length;
+    var pct = Math.round(withAlt / imgs.length * 100);
+    if(pct >= 70){ ok("Image alt text coverage " + pct + "%", withAlt + " of " + imgs.length + " images described."); }
+    else {
+      warn("Only " + pct + "% of images have alt text",
+           withAlt + " of " + imgs.length + " images have descriptive alt text. Blind agents (and shoppers) rely on it.",
+           "Describe each product image in its alt attribute: product name + what the photo shows.", 6);
+    }
+  }
+
+  /* 13 — visible price */
+  var txt = bodyText(doc);
+  var priceRe = /(\$|CAD\s?|CA\$)\s?\d[\d\s,]*(?:[.,]\d{2})?|\d[\d\s,]*[.,]\d{2}\s?(\$|CAD)/;
+  if(priceRe.test(txt)){ ok("Price visible on the page", "A human-readable price was detected in the page text."); }
+  else {
+    warn("No visible price detected",
+         "If the price only appears after selecting options or via JavaScript, agents may miss it.",
+         "Make sure the price renders in the initial HTML, near the product title.", 6);
+  }
+
+  /* 14 — French signals (Québec differentiator) */
+  var lang = (doc.documentElement.getAttribute("lang") || "").toLowerCase();
+  var frWords = ["livraison","ajouter au panier","panier","accueil","boutique","quantité",
+                 "disponible","en stock","épuisé","rabais","solde","expédition","paiement"];
+  var low = (doc.title + " " + txt).toLowerCase();
+  var frHits = frWords.filter(function(w){ return low.indexOf(w) !== -1; });
+  if(lang.indexOf("fr") === 0 || frHits.length >= 3){
+    ok("French content detected",
+       (lang ? "lang=\"" + lang + "\"" : "French vocabulary") + " found — you're visible to French-language shoppers and agents in Québec.");
+  } else {
+    warn("No French content detected",
+         "Québec's language laws and French-speaking shoppers (and French-language agents) favour French content. English-only pages miss a huge local market.",
+         "Add French product titles/descriptions — even a translated title + description doubles your Québec surface area.", 3);
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  plays.sort(function(a,b){ return b.pts - a.pts; });
+
+  var grade, sub;
+  if(score >= 85){ grade = "Agent-ready"; sub = "This product page speaks fluent agent. Minor polish only."; }
+  else if(score >= 65){ grade = "Almost there"; sub = "A few fixes away from being reliably recommended."; }
+  else if(score >= 40){ grade = "Needs work"; sub = "Agents are probably skipping this product today."; }
+  else { grade = "Invisible to agents"; sub = "This page is nearly unreadable to AI shopping agents."; }
+
+  return { score:score, grade:grade, sub:sub, plays:plays, passes:passes, url:url };
+}
+
+/* ---------- render ---------- */
+function gradeColor(score){
+  if(score >= 85) return "#1e7e34";
+  if(score >= 65) return "#9a6b12";
+  if(score >= 40) return "#b35c12";
+  return "#b3261e";
+}
+function render(res){
+  var results = document.getElementById("results");
+  results.classList.remove("hidden");
+  document.getElementById("auditedUrl").textContent = res.url;
+  document.getElementById("gradeTitle").textContent = res.grade + " — " + res.score + "/100";
+  document.getElementById("gradeSub").textContent = res.sub +
+    " Found " + res.plays.length + " fix" + (res.plays.length === 1 ? "" : "es") + ".";
+
+  var C = 326.7, fg = document.getElementById("ringFg");
+  fg.style.stroke = gradeColor(res.score);
+  fg.style.transition = "stroke-dashoffset 1s ease";
+  requestAnimationFrame(function(){
+    fg.style.strokeDashoffset = C - (C * res.score / 100);
+  });
+  var num = document.getElementById("scoreNum"), shown = 0;
+  var tick = setInterval(function(){
+    shown += Math.max(1, Math.round((res.score - shown) / 8));
+    if(shown >= res.score){ shown = res.score; clearInterval(tick); }
+    num.textContent = shown;
+  }, 40);
+
+  var playsEl = document.getElementById("plays");
+  playsEl.innerHTML = "";
+  if(res.plays.length === 0){
+    playsEl.innerHTML = '<div class="play"><p>Nothing to fix — this page is in great shape. 🎉</p></div>';
+  }
+  res.plays.forEach(function(p, i){
+    var d = document.createElement("div");
+    d.className = "play";
+    var label = p.sev === "critical" ? "Critical" : "Warning";
+    d.innerHTML =
+      '<div class="top"><span class="n">' + (i+1) + '</span><h4></h4>' +
+      '<span class="sev ' + p.sev + '">' + label + '</span></div>' +
+      '<p></p><div class="fix"><strong>How to fix</strong><span></span></div>';
+    d.querySelector("h4").textContent = p.title;
+    d.querySelector("p").textContent = p.detail;
+    d.querySelector(".fix span").textContent = p.fix;
+    playsEl.appendChild(d);
+  });
+
+  var passesEl = document.getElementById("passes");
+  passesEl.innerHTML = "";
+  res.passes.forEach(function(p){
+    var d = document.createElement("details");
+    var s = document.createElement("summary"); s.textContent = p.title;
+    var pp = document.createElement("p"); pp.textContent = p.detail;
+    d.appendChild(s); d.appendChild(pp); passesEl.appendChild(d);
+  });
+
+  if(results.scrollIntoView) results.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* ---------- demo page (a realistic Québec shop page with problems) ---------- */
+var DEMO_HTML = '<!DOCTYPE html><html lang="en"><head>' +
+'<title>Candle</title>' +
+'<meta property="og:title" content="Candle">' +
+'</head><body>' +
+'<div class="header"><img src="/logo.png"><h2>Welcome to Bougies Montreal</h2></div>' +
+'<div class="product"><h1>Welcome</h1>' +
+'<img src="/candle1.jpg"><img src="/candle2.jpg" alt="">' +
+'<p>Our best seller! Everybody loves this one. Burns for hours and smells amazing. ' +
+'Hand-poured with love in our Montreal workshop. Get yours before they are gone!</p>' +
+'<div class="price">$24.99</div>' +
+'<button>Add to cart</button></div>' +
+'<footer>Shipping across Canada. Contact us anytime.</footer>' +
+'</body></html>';
+
+/* ---------- bot-block detection (never score a captcha page) ---------- */
+function looksBlocked(html){
+  var head = html.slice(0, 60000).toLowerCase();
+  var signals = ["captcha", "just a moment", "are you a robot",
+                 "verify you are a human", "access denied", "request blocked"];
+  var hits = 0;
+  signals.forEach(function(s){ if(head.indexOf(s) !== -1) hits++; });
+  var m = html.match(/<title[^>]*>([\s\S]{0,200}?)<\/title>/i);
+  var title = m ? m[1].replace(/<[^>]*>/g,"").trim() : "";
+  if(head.indexOf("cloudflare") !== -1) hits++;
+  return hits >= 2 || (hits >= 1 && title.length === 0);
+}
+
+/* ---------- wiring ---------- */
+var urlInput = document.getElementById("urlInput");
+var analyzeBtn = document.getElementById("analyzeBtn");
+var demoBtn = document.getElementById("demoBtn");
+var againBtn = document.getElementById("againBtn");
+var loading = document.getElementById("loading");
+var loadingText = document.getElementById("loadingText");
+var errorBox = document.getElementById("error");
+var results = document.getElementById("results");
+
+function showError(msg){
+  errorBox.textContent = msg;
+  errorBox.classList.remove("hidden");
+}
+function hideError(){ errorBox.classList.add("hidden"); }
+function setLoading(on, text){
+  loading.classList.toggle("hidden", !on);
+  if(text) loadingText.textContent = text;
+  analyzeBtn.disabled = on;
+  demoBtn.disabled = on;
+}
+function runOnHtml(html, url){
+  var doc = new DOMParser().parseFromString(html, "text/html");
+  var res = runAudit(doc, url);
+  setLoading(false);
+  render(res);
+}
+function doAnalyze(){
+  hideError();
+  var url = normalizeUrl(urlInput.value);
+  if(!url){ showError("Enter a product URL first — e.g. yourshop.com/products/blue-widget"); return; }
+  results.classList.add("hidden");
+  setLoading(true, "Fetching your page…");
+  fetchPage(url).then(function(html){
+    if(looksBlocked(html)){
+      setLoading(false);
+      showError("This site blocked the automated read (bot protection). We'd rather show nothing than a fake score — try the demo audit to see how the analysis works.");
+      return;
+    }
+    setLoading(true, "Reading it the way an agent would…");
+    setTimeout(function(){ runOnHtml(html, url); }, 350);
+  }).catch(function(){
+    setLoading(false);
+    showError("Couldn't read that page — some sites block automated reads. Try the demo audit to see how it works, or paste a different product URL.");
+  });
+}
+analyzeBtn.addEventListener("click", doAnalyze);
+urlInput.addEventListener("keydown", function(e){ if(e.key === "Enter") doAnalyze(); });
+demoBtn.addEventListener("click", function(){
+  hideError();
+  results.classList.add("hidden");
+  setLoading(true, "Reading the demo page the way an agent would…");
+  setTimeout(function(){ runOnHtml(DEMO_HTML, "demo — bougies-montreal.com/products/maple-candle"); }, 600);
+});
+againBtn.addEventListener("click", function(){
+  results.classList.add("hidden");
+  urlInput.value = ""; urlInput.focus();
+  window.scrollTo({top:0, behavior:"smooth"});
+});
+</script>
+</body>
+</html>
